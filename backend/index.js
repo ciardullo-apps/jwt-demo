@@ -1,23 +1,34 @@
 const express = require('express');
-const port = 3001;
 const bodyParser = require('body-parser');
 const app = express();
 const https = require('https');
 const fileStream = require('fs');
 const jwt = require('jsonwebtoken');
-const secretEncryptionKey = 'secretSharedKey'; // TODO Determine your own value
+const cors = require('cors');
+const dotenv = require('./config');
+console.log(dotenv);
 app.use(bodyParser.json());
 
-app.use((req, res, next) => {
-	res.setHeader('Access-Control-Allow-Origin', '*');
-	res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-	res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, OPTIONS');
-	res.setHeader('Access-Control-Allow-Credentials', 'true');
-	next();
-});
+// Allow only requests from this server's frontend
+const corsOptions = {
+  origin: `${dotenv.protocol}://${dotenv.hostName}:${dotenv.clientPort}`,
+  allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+  methods: 'GET, PUT, POST, OPTIONS',
+  credentials: true,
+  optionsSuccessStatus: 200
+}
+app.use(cors(corsOptions));
+
+// app.use((req, res, next) => {
+// 	res.setHeader('Access-Control-Allow-Origin', `${dotenv.protocol}://${dotenv.hostName}:${dotenv.clientPort}`);
+// 	res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+// 	res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, OPTIONS');
+// 	res.setHeader('Access-Control-Allow-Credentials', 'true');
+// 	next();
+// });
 
 const router = express.Router();
-app.use('/jwt-demo', router);
+app.use(`/${dotenv.context}`, router);
 
 router.get('/api', (req, res) => {
   res.json( {
@@ -57,7 +68,7 @@ router.post('/api/login', validatePayloadMiddleware, (req, res) => {
   if(user && user.pw === req.body.password) {
     const userSansPassword = {...user};
     delete userSansPassword.pw;
-    const token = jwt.sign(userSansPassword, secretEncryptionKey);
+    const token = jwt.sign(userSansPassword, `${dotenv.jwtKey}`);
     res.status(200).send({
       user: userSansPassword,
       token: token
@@ -74,7 +85,7 @@ const jwtMiddleware = (req, res, next) => {
 	if(typeof authString === 'string' && authString.indexOf(' ') > -1) {
 		const authArray = authString.split(' ');
 		const token = authArray[1];
-		jwt.verify(token, secretEncryptionKey, (err, decoded) => {
+		jwt.verify(token, `${dotenv.jwtKey}`, (err, decoded) => {
 			if(err) {
 				res.status(403).send({
 		      errorMessage: 'Permission denied'
@@ -116,9 +127,11 @@ router.get('/api/balance', jwtMiddleware, (req, res) => {
 });
 
 const server = https.createServer({
-	key: fileStream.readFileSync('server.key'),
-	cert: fileStream.readFileSync('server.crt'),
-	ca: fileStream.readFileSync('serverCA.crt'),
+	key: fileStream.readFileSync(`${dotenv.tlsKeyPath}`),
+	cert: fileStream.readFileSync(`${dotenv.tlsCertPath}`),
+	ca: fileStream.readFileSync(`${dotenv.tlsCertAuthPath}`),
 }, app);
 
-server.listen(port);
+server.listen(dotenv.serverPort, () => {
+  console.log('CORS-enabled web server listening on port ' + dotenv.serverPort);
+});
