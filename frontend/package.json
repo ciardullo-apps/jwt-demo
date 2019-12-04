@@ -21,6 +21,8 @@
     "@angular/platform-browser-dynamic": "^6.1.0",
     "@angular/router": "^6.1.0",
     "core-js": "^2.5.4",
+    "dotenv": "^8.2.0",
+    "fs": "0.0.1-security",
     "has-cors": "^1.1.0",
     "ngx-mqtt": "^6.13.2",
     "ngx-toastr": "10.1.0",

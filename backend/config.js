@@ -1,5 +1,5 @@
 const dotenv = require('dotenv');
-dotenv.config();
+dotenv.config({ path: '../.env'});
 module.exports = {
   nodeEnv: process.env.NODE_ENV,
   protocol: process.env.PROTOCOL,
